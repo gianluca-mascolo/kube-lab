@@ -1,0 +1,51 @@
+Vagrant.configure("2") do |config|
+  config.vm.provider :libvirt do |libvirt|
+   libvirt.storage_pool_name = "default"
+   libvirt.graphics_type = "spice"
+   libvirt.video_type = "qxl"
+  end
+  config.hostmanager.enabled = true
+  config.hostmanager.manage_host = true
+  config.hostmanager.manage_guest = true
+  config.hostmanager.ignore_private_ip = false
+  config.hostmanager.include_offline = true
+  config.ssh.keys_only = false
+  config.vm.provision "file", source: "./ansible.repo", destination: "/tmp/ansible.repo"
+  config.vm.provision "shell", path: "./install_ansible.sh"
+  config.vm.define "controller" do |controller|
+   controller.vm.box = "centos/7"
+   controller.vm.hostname = "controller.local.lab"
+   controller.vm.provision "ansible_local" do |ansible|
+    ansible.playbook = "playbook-controller.yml"
+    ansible.install = "false"
+   end
+   controller.vm.provider :libvirt do |domain|
+    domain.memory = 800
+    domain.cpus = 1
+   end
+   controller.vm.synced_folder ".", "/vagrant",
+    type: "nfs",
+    nfs_version: 4,
+    map_uid: 1000,
+    map_gid: 1000,
+    linux__nfs_options: ['ro','no_subtree_check','all_squash','async']
+  end
+  config.vm.define "worker1" do |worker1|
+   worker1.vm.box = "centos/7"
+   worker1.vm.hostname = "worker1.local.lab"
+   worker1.vm.provision "ansible_local" do |ansible|
+    ansible.playbook = "playbook-worker.yml"
+    ansible.install = "false"
+   end
+   worker1.vm.provider :libvirt do |domain|
+    domain.memory = 800
+    domain.cpus = 1
+   end
+   worker1.vm.synced_folder ".", "/vagrant",
+    type: "nfs",
+    nfs_version: 4,
+    map_uid: 1000,
+    map_gid: 1000,
+    linux__nfs_options: ['ro','no_subtree_check','all_squash','async']
+  end
+end
